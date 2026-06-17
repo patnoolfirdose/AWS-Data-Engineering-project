@@ -1,2 +1,2 @@
-# AWS-Data-Engineering-project
-Youtube Data pipeline 
+# Youtube data-pipeline using aws-s3-lambda -glue-athena-stepfunction
+A cloud-native ETL pipeline that ingests YouTube trending video data across 10 regions, transforms it through a medallion architecture (Bronze > Silver > Gold), enforces data quality gates, and produces analytics-ready aggregations — all orchestrated by AWS Step Functions.
