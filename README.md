@@ -24,3 +24,11 @@ is handled by AWS Step Functions, which coordinates the full pipeline with retry
 |Component        | Technology       |
 |-----------------|------------------|
 |Compute          |AWS lambda,AWS Glue(Pyspark)|
+|Storage          |Amazon S3 (Parquet, Snappy)|
+|Orchestration    |AWS Step Functions |
+|Scheduling       |Amazon EventBridge |
+|Metadata         |AWS Glue Data Catalog|
+|Query Engine     |Amazon Athena|
+|Alerting         |Amazon SNS |
+|Security         |AWS IAM|
+|Languages        |Python 3, PySpark, SQL|
