@@ -14,6 +14,7 @@ The pipeline supports 10 regions and runs on a configurable schedule via AWS Eve
 
 ##Architecture
 The pipeline follows the Medallion Architecture pattern with three data layers:
+
 Data Sources          Bronze              Silver            Quality Gate          Gold              Analytics
 ┌──────────┐     ┌──────────────┐    ┌──────────────┐    ┌────────────┐    ┌──────────────┐    ┌──────────┐
 │ YouTube  │     │              │    │              │    │            │    │  trending_   │    │          │
@@ -30,3 +31,4 @@ Data Sources          Bronze              Silver            Quality Gate        
                                                         ┌────────────┐
                                                         │  SNS Alert │
                                                         └────────────┘
+
