@@ -18,3 +18,9 @@ The pipeline follows the Medallion Architecture pattern with three data layers:
 <img width="1536" height="1024" alt="ChatGPT Image Jun 17, 2026, 01_31_39 PM" src="https://github.com/user-attachments/assets/fd1d5143-b673-4aed-a512-f02784bee29c" />
 Orchestration
 is handled by AWS Step Functions, which coordinates the full pipeline with retry logic, parallel execution, and failure notifications.
+
+## Tech Stack
+
+|Component        | Technology       |
+|-----------------|------------------|
+|Compute          |AWS lambda,AWS Glue(Pyspark)|
