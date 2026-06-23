@@ -144,14 +144,3 @@ YouTube API
  Dashboards / Insights
 ```
 
-## 📈 Key Features
-
-- Automated daily ingestion
-- Serverless architecture
-- Data quality validation
-- Medallion architecture implementation
-- Partitioned Parquet storage
-- Athena analytics layer
-- Workflow orchestration using Step Functions
-- Notification system using SNS
-- Scalable PySpark transformations
