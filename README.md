@@ -33,37 +33,38 @@ is handled by AWS Step Functions, which coordinates the full pipeline with retry
 |Security         |AWS IAM|
 |Languages        |Python 3, PySpark, SQL|
 
+
 ## 📁 Project Structure
 
 ```text
 youtube-data-pipeline-2026/
 │
 ├── lambdas/
-│   ├── youtube_api_ingestion/
-│   │   └── lambda_function.py
+│   ├── youtube_api_ingestion/                 # Ingestion Lambda
+│   │   └── lambda_function.py                 # Extracts trending videos & category metadata from YouTube API
 │   │
-│   └── json_to_parquet/
-│       └── lambda_function.py
+│   └── json_to_parquet/                       # Transformation Lambda
+│       └── lambda_function.py                 # Converts category mappings from JSON to Parquet
 │
 ├── glue_jobs/
-│   ├── bronze_to_silver_statistics.py
-│   └── silver_to_gold_analytics.py
+│   ├── bronze_to_silver_statistics.py         # Bronze → Silver ETL (Cleaning, standardization)
+│   └── silver_to_gold_analytics.py            # Silver → Gold ETL (Aggregations & analytics)
 │
 ├── data_quality/
-│   └── dq_lambda.py
+│   └── dq_lambda.py                           # Schema, null, duplicate & quality validations
 │
 ├── step_functions/
-│   └── pipeline_orchestration.json
+│   └── pipeline_orchestration.json            # Workflow orchestration definition
 │
 ├── scripts/
-│   ├── aws_copy.sh
-│   └── information.md
+│   ├── aws_copy.sh                            # Historical data upload automation
+│   └── information.md                         # AWS resource inventory and configuration
 │
 ├── data/
-│   ├── {region}videos.csv
-│   └── {region}_category_id.json
+│   ├── {region}videos.csv                     # Historical YouTube trending datasets
+│   └── {region}_category_id.json              # Category lookup reference data
 │
-└── YouTube Trending Data Pipeline.png
+└── YouTube Trending Data Pipeline.png         # End-to-end AWS architecture diagram
 ```
 
 ### Component Description
