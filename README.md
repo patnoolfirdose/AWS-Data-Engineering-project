@@ -726,7 +726,324 @@ This project minimizes operational costs by leveraging:
 - On-demand AWS Glue
 - Athena pay-per-query model
 - Partitioned Parquet datasets
+
+# ▶️ Running the Pipeline
+
+The pipeline can be executed either automatically through EventBridge scheduling or manually using AWS Step Functions.
+
+---
+
+## Automated Execution (Recommended)
+
+Amazon EventBridge triggers the Step Functions workflow on a predefined schedule.
+
+### Create EventBridge Schedule
+
+```bash
+aws events put-rule \
+  --name yt-pipeline-schedule \
+  --schedule-expression "rate(6 hours)"
+```
+
+### Attach Step Function Target
+
+```bash
+aws events put-targets \
+  --rule yt-pipeline-schedule \
+  --targets '[{
+    "Id":"1",
+    "Arn":"<step-function-arn>",
+    "RoleArn":"<eventbridge-role-arn>"
+  }]'
+```
+
+### Benefits
+
+- Fully automated ingestion
+- No manual intervention required
+- Supports continuous data collection
+- Near real-time analytics updates
+
+---
+
+## Manual Execution
+
+The workflow can also be started on demand.
+
+```bash
+aws stepfunctions start-execution \
+  --state-machine-arn <state-machine-arn>
+```
+
+### Common Use Cases
+
+- Testing new deployments
+- Historical data backfills
+- Debugging ETL workflows
+- Data validation checks
+
+---
+
+# 🔄 Pipeline Execution Flow
+
+```text
+┌──────────────────────────────┐
+│ 1. YouTube API Ingestion     │
+│    Lambda Function           │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 2. Bronze Layer              │
+│    Raw JSON Storage in S3    │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 3. Parallel Silver Jobs      │
+├──────────────────────────────┤
+│ Glue: bronze_to_silver       │
+│ Lambda: json_to_parquet      │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 4. Data Quality Validation   │
+│    dq_lambda                 │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 5. Gold Aggregations         │
+│    silver_to_gold_analytics  │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 6. Athena Analytics          │
+│    Query Ready Datasets      │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 7. SNS Notifications         │
+│    Success / Failure Alerts  │
+└──────────────────────────────┘
+```
+
+---
+
+## Step Functions Workflow
+
+### Stage 1: Data Ingestion
+
+- Calls YouTube API
+- Retrieves trending video statistics
+- Retrieves category metadata
+- Writes raw JSON files to Bronze S3
+
+### Stage 2: Silver Transformations
+
+Runs in parallel:
+
+#### Statistics ETL
+
+- Cleans raw video statistics
+- Standardizes schema
+- Calculates derived metrics
+- Writes Silver Parquet datasets
+
+#### Reference Data ETL
+
+- Converts category mappings to Parquet
+- Standardizes category reference data
+- Writes Silver reference datasets
+
+### Stage 3: Data Quality Validation
+
+Validates:
+
+- Row counts
+- Null thresholds
+- Required schema
+- Value ranges
+- Data freshness
+
+If validation fails:
+
+- Workflow stops
+- SNS alert is sent
+- Gold layer is not generated
+
+### Stage 4: Gold Analytics Generation
+
+Creates:
+
+- `trending_analytics`
+- `channel_analytics`
+- `category_analytics`
+
+### Stage 5: Notifications
+
+SNS sends:
+
+- Success notifications
+- Failure notifications
+- Validation alerts
+
+---
+
+## Reliability Features
+
+### Retry Policy
+
+Every workflow stage supports:
+
+- Maximum retries: 3
+- Exponential backoff
+- Automatic transient error recovery
+
+### Monitoring
+
+- AWS CloudWatch Logs
+- AWS Step Functions Execution History
+- SNS Email Notifications
+- Glue Job Metrics
+
+### Error Handling
+
+- Failed workflows are logged
+- Detailed error messages captured
+- Alert notifications sent automatically
+- Data Quality failures block downstream processing
+
+---
+
+## Expected Runtime
+
+| Component | Typical Runtime |
+|------------|------------|
+| Lambda Ingestion | 1–2 minutes |
+| Silver ETL | 2–5 minutes |
+| Data Quality Checks | <1 minute |
+| Gold Aggregation | 2–4 minutes |
+| Total Pipeline Runtime | 5–10 minutes |
 - Snappy compression
 - Event-driven processing
 
 Estimated monthly cost for moderate workloads: **$10–$30/month**
+
+# 📥 Data Sources
+
+The pipeline combines real-time API ingestion with historical datasets to support analytics, testing, and backfill operations.
+
+---
+
+## 1. YouTube Data API v3 (Primary Source)
+
+The primary source for trending video analytics.
+
+### Data Collected
+
+- Trending videos by region
+- Video statistics
+  - Views
+  - Likes
+  - Comments
+- Channel metadata
+- Video category information
+- Publish dates
+- Trending dates
+
+### Benefits
+
+- Near real-time data ingestion
+- Global region coverage
+- Reliable and authoritative source
+- Supports automated incremental loads
+
+### Sample API Endpoint
+
+```text
+https://www.googleapis.com/youtube/v3/videos
+```
+
+---
+
+## 2. Kaggle YouTube Trending Dataset (Historical Source)
+
+Used for historical backfills, development, testing, and validation.
+
+### Dataset Coverage
+
+- 10 countries/regions
+- Historical trending snapshots
+- Video metadata
+- Engagement metrics
+- Category mappings
+
+### Use Cases
+
+- Historical trend analysis
+- ETL testing
+- Data quality validation
+- Pipeline benchmarking
+- Development and debugging
+
+### Dataset Files
+
+```text
+USvideos.csv
+GBvideos.csv
+INvideos.csv
+CAvideos.csv
+DEvideos.csv
+FRvideos.csv
+JPvideos.csv
+KRvideos.csv
+MXvideos.csv
+RUvideos.csv
+```
+
+---
+
+## Data Source Strategy
+
+| Source | Purpose |
+|----------|----------|
+| YouTube Data API v3 | Real-time ingestion |
+| Kaggle Trending Dataset | Historical backfill |
+| Category Mapping JSON | Reference data enrichment |
+
+---
+
+## Supported Regions
+
+The pipeline currently supports:
+
+| Region Code | Country |
+|------------|------------|
+| US | United States |
+| GB | United Kingdom |
+| CA | Canada |
+| DE | Germany |
+| FR | France |
+| IN | India |
+| JP | Japan |
+| KR | South Korea |
+| MX | Mexico |
+| RU | Russia |
+
+---
+
+## Data Volume
+
+Typical ingestion cycle:
+
+- 50 trending videos per region
+- 10 supported regions
+- ~500 video records per execution
+- Executed every 6 hours
+- Approximately 60,000+ records per month
+
+This hybrid ingestion strategy enables both real-time analytics and historical trend analysis while maintaining a scalable and cost-efficient data lake architecture.
