@@ -517,3 +517,216 @@ The Gold layer transforms raw YouTube data into business-ready insights that sup
 - Athena-powered ad-hoc analytics
 
 All Gold datasets are optimized for serverless querying using Amazon Athena and registered in the AWS Glue Data Catalog.
+
+# ☁️ AWS Infrastructure Setup
+
+This project uses a fully serverless AWS architecture built on Amazon S3, AWS Lambda, AWS Glue, Step Functions, Athena, EventBridge, and SNS.
+
+## S3 Data Lake Buckets
+
+Create the following S3 buckets for the Medallion Architecture:
+
+```bash
+aws s3 mb s3://yt-data-pipeline-bronze-<region>-<env>
+aws s3 mb s3://yt-data-pipeline-silver-<region>-<env>
+aws s3 mb s3://yt-data-pipeline-gold-<region>-<env>
+aws s3 mb s3://yt-data-pipeline-script-<region>-<env>
+```
+
+### Bucket Purpose
+
+| Bucket | Purpose |
+|----------|----------|
+| Bronze | Raw ingestion data |
+| Silver | Cleansed and standardized datasets |
+| Gold | Business-ready analytics datasets |
+| Script | Glue ETL scripts and deployment artifacts |
+
+---
+
+## AWS Glue Catalog Databases
+
+Create separate Glue databases for each processing layer.
+
+```bash
+aws glue create-database --database-input '{"Name":"yt_pipeline_bronze_<env>"}'
+
+aws glue create-database --database-input '{"Name":"yt_pipeline_silver_<env>"}'
+
+aws glue create-database --database-input '{"Name":"yt_pipeline_gold_<env>"}'
+```
+
+---
+
+## SNS Alerting Configuration
+
+Create an SNS topic for operational alerts and monitoring.
+
+```bash
+aws sns create-topic \
+  --name yt-data-pipeline-alerts-<env>
+
+aws sns subscribe \
+  --topic-arn <topic-arn> \
+  --protocol email \
+  --notification-endpoint <your-email>
+```
+
+Notifications are generated for:
+
+- Data quality failures
+- Glue job failures
+- Step Function failures
+- Successful pipeline completion
+
+---
+
+# ⚙️ Configuration
+
+## Lambda Environment Variables
+
+### YouTube Ingestion Lambda
+
+| Variable | Description | Example |
+|----------|----------|----------|
+| YOUTUBE_API_KEY | YouTube Data API v3 key | AIzaSyXXXX |
+| S3_BUCKET_BRONZE | Bronze bucket name | yt-data-pipeline-bronze-dev |
+| YOUTUBE_REGIONS | Regions to ingest | US,GB,CA,DE,FR,IN,JP |
+
+---
+
+### Data Quality Lambda
+
+| Variable | Description | Default |
+|----------|----------|----------|
+| S3_BUCKET_SILVER | Silver bucket name | Required |
+| GLUE_DB_SILVER | Silver Glue database | yt_pipeline_silver_dev |
+| SNS_ALERT_TOPIC_ARN | SNS topic ARN | Required |
+| DQ_MIN_ROW_COUNT | Minimum acceptable row count | 10 |
+| DQ_MAX_NULL_PERCENT | Maximum allowed null percentage | 5.0 |
+
+---
+
+## Glue Job Runtime Parameters
+
+Glue jobs receive parameters through AWS Step Functions.
+
+| Parameter | Description |
+|----------|----------|
+| --bronze_database | Bronze Glue database |
+| --bronze_table | Bronze table |
+| --silver_database | Silver Glue database |
+| --silver_bucket | Silver bucket |
+| --gold_database | Gold Glue database |
+| --gold_bucket | Gold bucket |
+
+---
+
+# 🚀 Deployment Guide
+
+## Step 1: Upload Glue Scripts
+
+```bash
+aws s3 cp glue_jobs/bronze_to_silver_statistics.py \
+s3://yt-data-pipeline-script-<region>-<env>/glue_jobs/
+
+aws s3 cp glue_jobs/silver_to_gold_analytics.py \
+s3://yt-data-pipeline-script-<region>-<env>/glue_jobs/
+```
+
+---
+
+## Step 2: Deploy Lambda Functions
+
+### YouTube Ingestion Lambda
+
+```bash
+cd lambdas/youtube_api_ingestion
+
+zip -r function.zip lambda_function.py
+
+aws lambda create-function \
+  --function-name yt-data-pipeline-youtube-ingestion-<env> \
+  --runtime python3.9 \
+  --handler lambda_function.lambda_handler \
+  --zip-file fileb://function.zip \
+  --role <lambda-execution-role-arn> \
+  --timeout 300 \
+  --memory-size 256
+```
+
+Repeat the process for:
+
+- json_to_parquet Lambda
+- dq_lambda
+
+---
+
+## Step 3: Create AWS Glue Jobs
+
+```bash
+aws glue create-job \
+  --name yt-data-pipeline-bronze-to-silver-<env> \
+  --role <glue-role-arn> \
+  --command '{"Name":"glueetl","ScriptLocation":"s3://yt-data-pipeline-script-<region>-<env>/glue_jobs/bronze_to_silver_statistics.py"}' \
+  --glue-version "4.0" \
+  --number-of-workers 2 \
+  --worker-type G.1X
+```
+
+Create an additional Glue Job for:
+
+```text
+silver_to_gold_analytics.py
+```
+
+---
+
+## Step 4: Deploy Step Functions Workflow
+
+```bash
+aws stepfunctions create-state-machine \
+  --name yt-data-pipeline-workflow \
+  --definition file://pipeline_orchestration.json \
+  --role-arn <step-function-role-arn>
+```
+
+---
+
+## Step 5: Configure EventBridge Scheduler
+
+```bash
+cron(0 */6 * * ? *)
+```
+
+Pipeline execution frequency:
+
+- Every 6 hours
+- Fully automated
+- Event-driven orchestration
+
+---
+
+# 🔒 Security Controls
+
+- IAM least-privilege access model
+- Encrypted S3 storage
+- Secure API key management
+- CloudWatch logging enabled
+- SNS monitoring and alerting
+- Resource-level IAM permissions
+
+---
+
+# 💰 Cost Optimization
+
+This project minimizes operational costs by leveraging:
+
+- Serverless AWS Lambda
+- On-demand AWS Glue
+- Athena pay-per-query model
+- Partitioned Parquet datasets
+- Snappy compression
+- Event-driven processing
+
+Estimated monthly cost for moderate workloads: **$10–$30/month**
