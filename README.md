@@ -144,3 +144,95 @@ YouTube API
  Dashboards / Insights
 ```
 
+## 🥉 Bronze Layer (Raw Data)
+
+The ingestion Lambda (`youtube_api_ingestion`) extracts trending YouTube video statistics and category metadata from the YouTube Data API v3.
+
+### Data Sources
+
+- **Trending Videos** – Top 50 trending videos per region
+- **Category Mappings** – Video category ID-to-name reference dataset
+
+### Storage Pattern
+
+Raw data is stored in Amazon S3 as JSON and partitioned for efficient querying and downstream processing.
+
+```text
+s3://bronze-bucket/youtube/raw_statistics/region=US/date=2026-04-01/hour=12/
+s3://bronze-bucket/youtube/raw_statistics_reference_data/region=US/
+```
+
+### Key Features
+
+- API-driven ingestion
+- Incremental data collection
+- Region-based partitioning
+- Event-driven architecture using AWS Lambda
+- Historical backfill support using Kaggle datasets
+
+Historical CSV datasets can be uploaded into the Bronze layer using the `aws_copy.sh` utility script.
+
+---
+
+## 🥈 Silver Layer (Cleansed & Standardized Data)
+
+The Silver layer applies data cleansing, schema standardization, enrichment, and validation to raw datasets.
+
+Two parallel transformations process Bronze data:
+
+### 1. Statistics Transformation (`bronze_to_silver_statistics`)
+
+#### Processing Steps
+
+- Schema enforcement across API JSON and Kaggle CSV datasets
+- Data type standardization
+  - Views → BIGINT
+  - Likes → BIGINT
+  - Comments → BIGINT
+  - Dates → TIMESTAMP
+- Region code normalization
+- Null value handling
+- Duplicate record removal
+- Business metric generation
+
+#### Derived Metrics
+
+- `like_ratio`
+- `engagement_rate`
+- `comment_rate`
+- `views_per_day`
+
+#### Output
+
+```text
+Format: Apache Parquet
+Compression: Snappy
+Partitioning: region
+Storage Layer: Silver
+```
+
+### 2. Reference Data Transformation (`json_to_parquet`)
+
+#### Processing Steps
+
+- Converts category mappings from JSON to tabular format
+- Removes duplicate category records
+- Standardizes category metadata
+- Converts data to analytics-friendly Parquet format
+
+#### Output
+
+```text
+Format: Apache Parquet
+Compression: Snappy
+Partitioning: region
+Storage Layer: Silver
+```
+
+### Benefits of the Silver Layer
+
+- Improved query performance
+- Reduced storage footprint
+- Standardized schema across regions
+- Analytics-ready datasets
+- Optimized for AWS Athena and Glue Catalog
